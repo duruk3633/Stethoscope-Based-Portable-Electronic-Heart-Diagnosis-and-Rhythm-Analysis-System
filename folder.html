@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Firebase Folder and File Viewer</title>
+    <script type="module">
+        // Import the required Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+        import { getStorage, ref, listAll, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js";
+
+
+        const firebaseConfig = {
+            // Write your own firebaseconfig here
+          };
+
+    
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const storage = getStorage(app);
+
+        // Function to display folder buttons
+        async function listFolders() {
+            const storageRef = ref(storage); // Reference to the root of the storage
+            const result = await listAll(storageRef); // List all items at the root
+
+            const folderButtonsDiv = document.getElementById("folder-buttons");
+            folderButtonsDiv.innerHTML = ""; // Clear existing buttons
+
+            // Create buttons for each folder (prefix)
+            result.prefixes.forEach(folderRef => {
+                const button = document.createElement("button");
+                button.textContent = folderRef.name; // Display folder name
+                button.onclick = () => listFilesInFolder(folderRef); // On click, show files in folder
+                folderButtonsDiv.appendChild(button);
+            });
+        }
+
+        // Function to list files in a clicked folder
+        async function listFilesInFolder(folderRef) {
+            const result = await listAll(folderRef); // List all files in the folder
+            const fileListDiv = document.getElementById("file-list");
+            fileListDiv.innerHTML = ""; // Clear the previous file list
+
+            // Display each file as a link
+            for (const fileRef of result.items) {
+                const url = await getDownloadURL(fileRef); // Get the file's download URL
+                const fileLink = document.createElement("div");
+                fileLink.innerHTML = `<a href="${url}" target="_blank">${fileRef.name}</a>`;
+                fileListDiv.appendChild(fileLink);
+            }
+        }
+
+        // Load folder buttons when the page loads
+        window.onload = listFolders;
+    </script>
+</head>
+<body>
+
+<h1>Firebase Folder Viewer</h1>
+<div id="folder-buttons"></div> <!-- Container for folder buttons -->
+<h2>Files in Selected Folder</h2>
+<div id="file-list"></div> <!-- Container for file list -->
+
+</body>
+</html>

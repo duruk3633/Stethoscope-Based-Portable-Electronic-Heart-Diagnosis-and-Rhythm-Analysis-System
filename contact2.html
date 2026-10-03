@@ -1,0 +1,177 @@
+<!-- CSS FILES -->        
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Open+Sans&display=swap" rel="stylesheet">
+<link href="css/bootstrap.min.css" rel="stylesheet">
+<link href="css/bootstrap-icons.css" rel="stylesheet">
+<link href="css/templatemo-topic-listing.css" rel="stylesheet">
+<style>
+    #folder-buttons button {
+        display: block;
+        margin-bottom: 10px;
+        width: 30%;
+        padding: 10px;
+        background-image: linear-gradient(15deg, #13547a 0%, #80d0c7 100%);
+        color: #ffffff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    #folder-buttons button:hover {
+        background-color: #0056b3;
+    }
+    .file-container {
+        margin-left: 20px;
+        margin-top: 10px;
+    }
+    .file-item {
+        display: inline-block;
+        width: 30%;
+        vertical-align: top;
+        margin-right: 1%;
+        margin-bottom: 20px;
+    }
+    .file-name {
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    .file-content {
+        background-color: #f8f9fa;
+        padding: 10px;
+        border-radius: 5px;
+        overflow-x: auto;
+        max-height: 500px;
+    }
+    .file-content pre {
+        background-color: #f4f4f4;
+        padding: 10px;
+        border-radius: 5px;
+        font-family: monospace, sans-serif;
+        max-height: 200px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+</style>
+</head>
+<body class="topics-listing-page" id="top">
+
+<main>
+    <nav class="navbar navbar-expand-lg">
+        <!-- Navbar code remains the same -->
+    </nav>
+
+    <header class="site-header d-flex flex-column justify-content-center align-items-center">
+        <!-- Header code remains the same -->
+    </header>
+
+    <section class="section-padding section-bg">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-12 col-12">
+                    <h3 class="mb-4 pb-2">Patients' follow-up folders</h3>
+                    
+                    <!-- Firebase Folder Viewer Section -->
+                    <h4>Available Folders:</h4>
+                    <div id="folder-buttons"></div> <!-- Container for folder buttons -->
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<!-- Add the PDF.js library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getStorage, ref, listAll, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyCTLQPJEkplsRp_VsVEDxdYCwpSXO9UJvo",
+        authDomain: "uploadfile-2048a.firebaseapp.com",
+        databaseURL: "https://uploadfile-2048a-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "uploadfile-2048a",
+        storageBucket: "uploadfile-2048a.appspot.com",
+        messagingSenderId: "578141515025",
+        appId: "1:578141515025:web:449259be3b42512f39f0b0",
+        measurementId: "G-E4KVX34PZD"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const storage = getStorage(app);
+
+    async function listFolders() {
+        const storageRef = ref(storage);
+        const result = await listAll(storageRef);
+
+        const folderButtonsDiv = document.getElementById("folder-buttons");
+        folderButtonsDiv.innerHTML = "";
+
+        result.prefixes.forEach(folderRef => {
+            const button = document.createElement("button");
+            button.textContent = folderRef.name;
+            button.onclick = () => listFilesInFolder(folderRef);
+            folderButtonsDiv.appendChild(button);
+
+            const fileContainer = document.createElement("div");
+            fileContainer.id = `files-${folderRef.name}`;
+            fileContainer.classList.add("file-container");
+            folderButtonsDiv.appendChild(fileContainer);
+        });
+    }
+
+    async function listFilesInFolder(folderRef) {
+        const result = await listAll(folderRef);
+        const fileContainer = document.getElementById(`files-${folderRef.name}`);
+        fileContainer.innerHTML = "";
+
+        for (const fileRef of result.items) {
+            const url = await getDownloadURL(fileRef);
+            const fileItem = document.createElement("div");
+            fileItem.classList.add("file-item");
+
+            const fileName = document.createElement("div");
+            fileName.classList.add("file-name");
+            fileName.textContent = fileRef.name;
+            fileItem.appendChild(fileName);
+
+            const fileContent = document.createElement("div");
+            fileContent.classList.add("file-content");
+
+            if (fileRef.name.endsWith('.png') || fileRef.name.endsWith('.png')) {
+                fileContent.innerHTML = `<img src="${url}" alt="${fileRef.name}" style="max-width: 100%; height: auto;">`;
+            } else if (fileRef.name.endsWith('.wav')) {
+                fileContent.innerHTML = `<audio controls><source src="${url}" type="audio/wav">Your browser does not support the audio element.</audio>`;
+            } else if (fileRef.name.endsWith('.txt')) {
+                try {
+                    const response = await fetch(url);
+                    if (response.ok) {
+                        const text = await response.text();
+                        fileContent.innerHTML = `<pre style="white-space: pre-wrap; word-wrap: break-word;">${text}</pre>`;
+                    } else {
+                        fileContent.innerHTML = `<p style="color: red;">Failed to load content: ${response.statusText}</p>`;
+                    }
+                } catch (error) {
+                    fileContent.innerHTML = `<p style="color: red;">Error fetching content: ${error.message}</p>`;
+                }
+            } else {
+                fileContent.innerHTML = `<a href="${url}" target="_blank">${fileRef.name}</a>`;
+            }
+
+            fileItem.appendChild(fileContent);
+            fileContainer.appendChild(fileItem);
+        }
+    }
+
+    window.onload = listFolders;
+</script>
+
+<!-- JAVASCRIPT FILES -->
+<script src="js/jquery.min.js"></script>
+<script src="js/bootstrap.bundle.min.js"></script>
+<script src="js/jquery.sticky.js"></script>
+<script src="js/custom.js"></script>
+<script src="firebase.js"></script>
+
+</body>
